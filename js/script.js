@@ -9,8 +9,8 @@ document.addEventListener("DOMContentLoaded", () => {
         fetch('products.php')
             .then(response => response.json())
             .then(data => {
-                if (data.error) {
-                    console.error('Hiba a termékek betöltésekor:', data.error);
+                if (!Array.isArray(data)) {
+                    console.warn("Érvénytelen válasz a termékek betöltésekor:", data);
                     return;
                 }
                 productList.innerHTML = data.map(product => `
@@ -25,12 +25,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         </div>
                     </div>`).join('');
             })
-            .catch(error => {
-                console.error('Hiba a fetch kérés során:', error);
-            });
+            .catch(error => console.error('Hiba a termékek betöltésekor:', error));
     }
 
-    // Kosárba helyezés
+    // Termék kosárba helyezése
     function addToCart(productId, productName, productPrice) {
         fetch('cart.php', {
             method: 'POST',
@@ -39,51 +37,41 @@ document.addEventListener("DOMContentLoaded", () => {
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                alert(data.success);
-            } else {
-                alert(data.error);
-            }
-            loadCart(); // Frissíti a kosár tartalmát
+            loadCart(); 
         })
-        .catch(error => {
-            console.error('Hiba a kosárba helyezés során:', error);
-        });
+        .catch(error => console.error('Hiba a kosárba helyezés során:', error));
     }
 
-    // Kosár adatainak betöltése és megjelenítése
+    // Kosár betöltése és frissítése
     function loadCart() {
         fetch('cart.php')
             .then(response => response.json())
             .then(data => {
-                if (cartInfo) {
-                    cartInfo.textContent = data.length; // Frissíti a kosár termékek számát
+                if (!Array.isArray(data)) {
+                    console.warn("Hibás válasz a kosár betöltésekor:", data);
+                    return;
                 }
+                cartInfo.textContent = data.length; 
 
-                // Kosár termékek listázása a kosár részletekben
-                if (cartDetails) {
-                    cartDetails.innerHTML = data.map(item => `
-                        <div class="cart-item" data-id="${item.id}">
-                            <p><strong>Termék neve:</strong> ${item.nev}</p>
-                            <p><strong>Ár:</strong> ${item.ar} Ft</p>
-                            <button class="btn btn-danger remove-item-btn">Törlés</button>
-                        </div>
-                    `).join('');
-                }
+                cartDetails.innerHTML = data.length > 0 ? data.map(item => `
+                    <div class="cart-item" data-id="${item.id}">
+                        <p><strong>${item.nev}</strong> - ${item.ar} Ft</p>
+                        <button class="btn btn-danger remove-item-btn">Törlés</button>
+                    </div>`).join('') 
+                    : "<p>A kosár üres.</p>";
 
-                // Törlés gombok eseménykezelése
-                const removeButtons = document.querySelectorAll('.remove-item-btn');
-                removeButtons.forEach(button => {
+                
+                document.querySelectorAll('.remove-item-btn').forEach(button => {
                     button.addEventListener('click', (e) => {
                         const itemId = e.target.closest('.cart-item').getAttribute('data-id');
-                        removeFromCart(itemId); //Törlés funkció meghívása
+                        removeFromCart(itemId);
                     });
                 });
             })
             .catch(error => console.error('Hiba a kosár betöltésekor:', error));
     }
 
-    // Kosárból való törlés(sajnos részlegesen működik)
+    // Termék törlése a kosárból
     function removeFromCart(productId) {
         fetch('cart.php', {
             method: 'DELETE',
@@ -92,16 +80,9 @@ document.addEventListener("DOMContentLoaded", () => {
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                alert(data.success);
-            } else {
-                alert(data.error);
-            }
-            loadCart(); // Frissíti a kosár tartalmát
+            loadCart(); 
         })
-        .catch(error => {
-            console.error('Hiba a kosár törlésénél:', error);
-        });
+        .catch(error => console.error('Hiba a törlés során:', error));
     }
 
     // Kosár gombok kezelése
@@ -110,39 +91,22 @@ document.addEventListener("DOMContentLoaded", () => {
             const productId = event.target.dataset.id;
             const productName = event.target.dataset.nev;
             const productPrice = event.target.dataset.ar;
-            if (!productId) {
-                console.error("Hiányzó termék ID!");
-                return;
+            if (productId) {
+                addToCart(productId, productName, productPrice);
             }
-            addToCart(productId, productName, productPrice);
         }
     });
 
-    // Kosár modál megnyitása
-    const openCartBtn = document.getElementById("open-cart"); 
-    if (openCartBtn) {
-        openCartBtn.addEventListener("click", () => {
-            cartModal.style.display = 'block'; 
-        });
-    }
+    // Kosár modál nyitása/zárása
+    document.getElementById("open-cart")?.addEventListener("click", () => cartModal.style.display = 'block');
+    document.getElementById("close-cart")?.addEventListener("click", () => cartModal.style.display = 'none');
 
-    // Kosár modál bezárása
-    function closeCart() {
-        cartModal.style.display = 'none';
-    }
-
-    // Kosár modál bezárása(sajnos nem működik)
-    const closeCartBtn = document.getElementById("close-cart");
-    if (closeCartBtn) {
-        closeCartBtn.addEventListener("click", closeCart);
-    }
-
-   // Kosár betöltése, amikor az oldal betöltődik
-   loadProducts();
-   loadCart();
-   closeCart();
-   removeFromCart();
+    // Betöltéskor frissítés
+    loadProducts();
+    loadCart();
 });
+
+
 
 
 
